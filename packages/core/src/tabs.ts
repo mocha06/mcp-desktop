@@ -101,7 +101,7 @@ async function listTerminalTabs(): Promise<Tab[]> {
   return parseTabLines(raw, false);
 }
 
-function parseTabLines(raw: string, hasUrl: boolean): Tab[] {
+export function parseTabLines(raw: string, hasUrl: boolean): Tab[] {
   return raw
     .split("\n")
     .filter(l => l.trim())

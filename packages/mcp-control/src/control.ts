@@ -7,48 +7,50 @@ import { join } from "node:path";
 
 const execFileAsync = promisify(execFile);
 
-export async function click(x: number, y: number): Promise<void> {
-  await runAppleScript(`
+export function escapeAppleScriptString(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+export function buildClickScript(x: number, y: number): string {
+  return `
     tell application "System Events"
       click at {${x}, ${y}}
     end tell
-  `);
+  `;
 }
 
-export async function doubleClick(x: number, y: number): Promise<void> {
-  await runAppleScript(`
+export function buildDoubleClickScript(x: number, y: number): string {
+  return `
     tell application "System Events"
       double click at {${x}, ${y}}
     end tell
-  `);
+  `;
 }
 
-export async function tripleClick(x: number, y: number): Promise<void> {
-  await runAppleScript(`
+export function buildTripleClickScript(x: number, y: number): string {
+  return `
     tell application "System Events"
       click at {${x}, ${y}}
       click at {${x}, ${y}}
       click at {${x}, ${y}}
     end tell
-  `);
+  `;
 }
 
-export async function rightClick(x: number, y: number): Promise<void> {
-  await runAppleScript(`
+export function buildRightClickScript(x: number, y: number): string {
+  return `
     tell application "System Events"
       secondary click at {${x}, ${y}}
     end tell
-  `);
+  `;
 }
 
-export async function typeText(text: string): Promise<void> {
-  // Use keystroke for text — safer than key code for arbitrary strings
-  const safe = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  await runAppleScript(`
+export function buildTypeTextScript(text: string): string {
+  return `
     tell application "System Events"
-      keystroke "${safe}"
+      keystroke "${escapeAppleScriptString(text)}"
     end tell
-  `);
+  `;
 }
 
 const MODIFIER_MAP: Record<string, string> = {
@@ -75,50 +77,60 @@ const KEY_CODE_MAP: Record<string, number> = {
   f7: 98, f8: 100, f9: 101, f10: 109, f11: 103, f12: 111,
 };
 
-export async function keyPress(combo: string): Promise<void> {
+export interface ParsedCombo {
+  modifiers: string[];
+  key: string;
+  keyCode?: number;
+}
+
+export function parseCombo(combo: string): ParsedCombo {
   const parts = combo.toLowerCase().split("+").map(s => s.trim());
   const modifiers = parts.slice(0, -1).map(m => MODIFIER_MAP[m]).filter(Boolean);
   const key = parts[parts.length - 1] ?? "";
-
-  const usingClause = modifiers.length > 0 ? ` using {${modifiers.join(", ")}}` : "";
-
-  if (KEY_CODE_MAP[key] !== undefined) {
-    await runAppleScript(`
-      tell application "System Events"
-        key code ${KEY_CODE_MAP[key]}${usingClause}
-      end tell
-    `);
-  } else {
-    const safeKey = key.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-    await runAppleScript(`
-      tell application "System Events"
-        keystroke "${safeKey}"${usingClause}
-      end tell
-    `);
-  }
+  const keyCode = KEY_CODE_MAP[key];
+  return { modifiers, key, keyCode };
 }
 
-export async function scroll(
+export function buildKeyPressScript(combo: string): string {
+  const { modifiers, key, keyCode } = parseCombo(combo);
+  const usingClause = modifiers.length > 0 ? ` using {${modifiers.join(", ")}}` : "";
+
+  if (keyCode !== undefined) {
+    return `
+      tell application "System Events"
+        key code ${keyCode}${usingClause}
+      end tell
+    `;
+  }
+  return `
+    tell application "System Events"
+      keystroke "${escapeAppleScriptString(key)}"${usingClause}
+    end tell
+  `;
+}
+
+export type ScrollDirection = "up" | "down" | "left" | "right";
+export type ScrollUnit = "line" | "page";
+
+export function buildScrollScript(
   x: number,
   y: number,
-  direction: "up" | "down" | "left" | "right",
+  direction: ScrollDirection,
   amount: number,
-  unit: "line" | "page" = "line"
-): Promise<void> {
+  unit: ScrollUnit = "line"
+): string {
   const signY = direction === "up" ? 1 : direction === "down" ? -1 : 0;
   const signX = direction === "right" ? 1 : direction === "left" ? -1 : 0;
 
-  let script: string;
-
   if (unit === "page") {
-    // Express sign as a Swift expression so we avoid Int/Int32 type mismatches
+    // Sign expressed in Swift to keep Int32 typing consistent on both axes.
     const w1 = signY === 0 ? "0" : signY > 0 ? "pageY" : "-pageY";
     const w2 = signX === 0 ? "0" : signX > 0 ? "pageX" : "-pageX";
 
-    // CGGetDisplaysWithPoint returns the display under the cursor.
-    // CGDisplayBounds gives logical (point) dimensions — correct for pixel scroll events on Retina.
-    // 85% of display height approximates one browser viewport (accounts for chrome/taskbar).
-    script = `
+    // CGGetDisplaysWithPoint resolves the display under the cursor; CGDisplayBounds
+    // returns logical (point) dimensions, which is what scroll-pixel events expect on Retina.
+    // 75% of display height leaves a small overlap strip on the next page for readability.
+    return `
 import CoreGraphics
 
 let point = CGPoint(x: ${x}, y: ${y})
@@ -138,8 +150,9 @@ let scrollEvent = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCoun
 scrollEvent.location = point
 scrollEvent.post(tap: .cghidEventTap)
 `;
-  } else {
-    script = `
+  }
+
+  return `
 import CoreGraphics
 
 let point = CGPoint(x: ${x}, y: ${y})
@@ -151,8 +164,40 @@ let scrollEvent = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount
 scrollEvent.location = point
 scrollEvent.post(tap: .cghidEventTap)
 `;
-  }
+}
 
+export async function click(x: number, y: number): Promise<void> {
+  await runAppleScript(buildClickScript(x, y));
+}
+
+export async function doubleClick(x: number, y: number): Promise<void> {
+  await runAppleScript(buildDoubleClickScript(x, y));
+}
+
+export async function tripleClick(x: number, y: number): Promise<void> {
+  await runAppleScript(buildTripleClickScript(x, y));
+}
+
+export async function rightClick(x: number, y: number): Promise<void> {
+  await runAppleScript(buildRightClickScript(x, y));
+}
+
+export async function typeText(text: string): Promise<void> {
+  await runAppleScript(buildTypeTextScript(text));
+}
+
+export async function keyPress(combo: string): Promise<void> {
+  await runAppleScript(buildKeyPressScript(combo));
+}
+
+export async function scroll(
+  x: number,
+  y: number,
+  direction: ScrollDirection,
+  amount: number,
+  unit: ScrollUnit = "line"
+): Promise<void> {
+  const script = buildScrollScript(x, y, direction, amount, unit);
   const tmp = join(tmpdir(), `mcp-scroll-${Date.now()}.swift`);
   try {
     await writeFile(tmp, script, "utf8");
