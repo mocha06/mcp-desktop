@@ -104,26 +104,29 @@ export async function scroll(
   direction: "up" | "down" | "left" | "right",
   amount: number
 ): Promise<void> {
-  // Python + Quartz CGEvent — macOS built-in, no dependencies needed
   const deltaY = direction === "up" ? amount : direction === "down" ? -amount : 0;
   const deltaX = direction === "right" ? amount : direction === "left" ? -amount : 0;
 
+  // Swift + CoreGraphics — always available on macOS, no extra dependencies
   const script = `
-import Quartz
+import CoreGraphics
 
-# Move cursor to position first
-move = Quartz.CGEventCreateMouseEvent(None, Quartz.kCGEventMouseMoved, (${x}, ${y}), 0)
-Quartz.CGEventPost(Quartz.kCGHIDEventTap, move)
+let point = CGPoint(x: ${x}, y: ${y})
 
-# Scroll event
-event = Quartz.CGEventCreateScrollWheelEvent(None, Quartz.kCGScrollEventUnitLine, 2, ${deltaY}, ${deltaX})
-Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
+// Move cursor to position
+let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)!
+moveEvent.post(tap: .cghidEventTap)
+
+// Scroll wheel event (unit: line, 2 axes)
+let scrollEvent = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 2, wheel1: ${deltaY}, wheel2: ${deltaX}, wheel3: 0)!
+scrollEvent.location = point
+scrollEvent.post(tap: .cghidEventTap)
 `;
 
-  const tmp = join(tmpdir(), `mcp-scroll-${Date.now()}.py`);
+  const tmp = join(tmpdir(), `mcp-scroll-${Date.now()}.swift`);
   try {
     await writeFile(tmp, script, "utf8");
-    await execFileAsync("python3", [tmp]);
+    await execFileAsync("swift", [tmp]);
   } finally {
     await unlink(tmp).catch(() => {});
   }
