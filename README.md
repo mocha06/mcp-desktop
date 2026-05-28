@@ -106,7 +106,7 @@ Includes all tools above, plus:
 | `right_click` | Right-click at coordinates | `x`, `y`, `verify_app?` |
 | `type_text` | Type text into the focused element | `text`, `verify_app?` |
 | `key_press` | Press a key or combo (`cmd+c`, `shift+tab`, `escape`, …) | `combo`, `verify_app?` |
-| `scroll` | Scroll at coordinates | `x`, `y`, `direction` (up/down/left/right), `amount?`, `verify_app?` |
+| `scroll` | Scroll at coordinates | `x`, `y`, `direction` (up/down/left/right), `amount?`, `unit?` (line/page), `verify_app?` |
 
 Pass `verify_app` to any control tool to abort with an error if the wrong app is frontmost — prevents accidental input to the wrong window.
 

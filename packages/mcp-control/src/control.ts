@@ -102,26 +102,56 @@ export async function scroll(
   x: number,
   y: number,
   direction: "up" | "down" | "left" | "right",
-  amount: number
+  amount: number,
+  unit: "line" | "page" = "line"
 ): Promise<void> {
-  const deltaY = direction === "up" ? amount : direction === "down" ? -amount : 0;
-  const deltaX = direction === "right" ? amount : direction === "left" ? -amount : 0;
+  const signY = direction === "up" ? 1 : direction === "down" ? -1 : 0;
+  const signX = direction === "right" ? 1 : direction === "left" ? -1 : 0;
 
-  // Swift + CoreGraphics — always available on macOS, no extra dependencies
-  const script = `
+  let script: string;
+
+  if (unit === "page") {
+    // Express sign as a Swift expression so we avoid Int/Int32 type mismatches
+    const w1 = signY === 0 ? "0" : signY > 0 ? "pageY" : "-pageY";
+    const w2 = signX === 0 ? "0" : signX > 0 ? "pageX" : "-pageX";
+
+    // CGGetDisplaysWithPoint returns the display under the cursor.
+    // CGDisplayBounds gives logical (point) dimensions — correct for pixel scroll events on Retina.
+    // 85% of display height approximates one browser viewport (accounts for chrome/taskbar).
+    script = `
 import CoreGraphics
 
 let point = CGPoint(x: ${x}, y: ${y})
 
-// Move cursor to position
+var displayID = CGMainDisplayID()
+var count: UInt32 = 0
+CGGetDisplaysWithPoint(point, 1, &displayID, &count)
+let bounds = CGDisplayBounds(displayID)
+
+let pageY = Int32(bounds.height * 0.85) * Int32(${amount})
+let pageX = Int32(bounds.width * 0.85) * Int32(${amount})
+
 let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)!
 moveEvent.post(tap: .cghidEventTap)
 
-// Scroll wheel event (unit: line, 2 axes)
-let scrollEvent = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 2, wheel1: ${deltaY}, wheel2: ${deltaX}, wheel3: 0)!
+let scrollEvent = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2, wheel1: ${w1}, wheel2: ${w2}, wheel3: 0)!
 scrollEvent.location = point
 scrollEvent.post(tap: .cghidEventTap)
 `;
+  } else {
+    script = `
+import CoreGraphics
+
+let point = CGPoint(x: ${x}, y: ${y})
+
+let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)!
+moveEvent.post(tap: .cghidEventTap)
+
+let scrollEvent = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 2, wheel1: ${signY * amount}, wheel2: ${signX * amount}, wheel3: 0)!
+scrollEvent.location = point
+scrollEvent.post(tap: .cghidEventTap)
+`;
+  }
 
   const tmp = join(tmpdir(), `mcp-scroll-${Date.now()}.swift`);
   try {

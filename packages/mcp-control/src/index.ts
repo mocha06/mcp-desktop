@@ -273,14 +273,15 @@ server.registerTool(
       x: z.number().int().describe("X coordinate to scroll at"),
       y: z.number().int().describe("Y coordinate to scroll at"),
       direction: z.enum(["up", "down", "left", "right"]).describe("Scroll direction"),
-      amount: z.number().int().min(1).default(3).describe("Number of lines to scroll"),
+      amount: z.number().int().min(1).default(3).describe("Number of units to scroll"),
+      unit: z.enum(["line", "page"]).default("line").describe("Scroll unit. 'line' scrolls by a fixed number of lines. 'page' scrolls one full viewport height per unit — resolution-aware, adapts to the display under the cursor."),
       verify_app: z.string().optional().describe("Expected frontmost app name. Aborts with an error if the wrong app is active."),
     },
   },
-  async ({ x, y, direction, amount, verify_app }) => {
+  async ({ x, y, direction, amount, unit, verify_app }) => {
     if (verify_app) await assertFrontmostApp(verify_app);
-    await scroll(x, y, direction, amount);
-    return { content: [{ type: "text", text: `Scrolled ${direction} ${amount} lines at (${x}, ${y})` }] };
+    await scroll(x, y, direction, amount, unit);
+    return { content: [{ type: "text", text: `Scrolled ${direction} ${amount} ${unit}(s) at (${x}, ${y})` }] };
   }
 );
 
