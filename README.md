@@ -158,9 +158,19 @@ git clone https://github.com/mocha06/mcp-desktop
 cd mcp-desktop
 npm install
 npm run build
+npm test
 ```
 
 Packages live in `packages/core` (shared primitives), `packages/mcp-screenshot`, and `packages/mcp-control`.
+
+### Testing
+
+Vitest covers pure logic: tab-list parsing and resolution, `BLOCKED_APPS` matching, AppleScript escaping, key-combo parsing, and the Swift scroll script construction. Side-effectful runners that call `osascript`, `screencapture`, or `swift` are exercised end-to-end on a real macOS machine — please smoke-test mouse/keyboard changes manually before opening a PR.
+
+```bash
+npm test           # one-shot
+npm run test:watch # rerun on save
+```
 
 ---
 

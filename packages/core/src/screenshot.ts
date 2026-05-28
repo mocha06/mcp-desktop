@@ -39,6 +39,9 @@ export async function captureDisplay(display: number, savePath?: string): Promis
 }
 
 export async function probeDisplays(): Promise<DisplayInfo[]> {
+  // Walk display numbers 1..8 sequentially. `screencapture -D N` exits 0 even when N
+  // doesn't exist but writes a tiny placeholder PNG, so we treat anything under ~1 KB
+  // as "no display" and stop. Displays are always numbered without gaps on macOS.
   const displays: DisplayInfo[] = [];
 
   for (let i = 1; i <= 8; i++) {

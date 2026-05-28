@@ -10,17 +10,15 @@ import {
   activateApp,
   getFrontmostApp,
   SUPPORTED_TAB_APPS,
+  parseBlockedApps,
+  isAppBlocked,
 } from "@mcp-desktop/core";
 import { click, doubleClick, tripleClick, rightClick, typeText, keyPress, scroll } from "./control.js";
 
-const BLOCKED_APPS = (process.env.BLOCKED_APPS ?? "")
-  .split(",")
-  .map(s => s.trim().toLowerCase())
-  .filter(Boolean);
+const BLOCKED_APPS = parseBlockedApps(process.env.BLOCKED_APPS);
 
 function assertNotBlocked(appName: string): void {
-  const lower = appName.toLowerCase();
-  if (BLOCKED_APPS.some(b => lower.includes(b))) {
+  if (isAppBlocked(appName, BLOCKED_APPS)) {
     throw new Error(`'${appName}' is in the blocked list and cannot be accessed.`);
   }
 }
