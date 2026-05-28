@@ -11,7 +11,7 @@ import {
   getFrontmostApp,
   SUPPORTED_TAB_APPS,
 } from "@mcp-desktop/core";
-import { click, doubleClick, rightClick, typeText, keyPress, scroll } from "./control.js";
+import { click, doubleClick, tripleClick, rightClick, typeText, keyPress, scroll } from "./control.js";
 
 const BLOCKED_APPS = (process.env.BLOCKED_APPS ?? "")
   .split(",")
@@ -196,6 +196,23 @@ server.registerTool(
     if (verify_app) await assertFrontmostApp(verify_app);
     await doubleClick(x, y);
     return { content: [{ type: "text", text: `Double-clicked at (${x}, ${y})` }] };
+  }
+);
+
+server.registerTool(
+  "triple_click",
+  {
+    description: "Triple-click at the given screen coordinates. Selects all text in the clicked input field — the mouse-native alternative to cmd+a for web inputs.",
+    inputSchema: {
+      x: z.number().int().describe("X coordinate in screen pixels"),
+      y: z.number().int().describe("Y coordinate in screen pixels"),
+      verify_app: z.string().optional().describe("Expected frontmost app name. Aborts with an error if the wrong app is active."),
+    },
+  },
+  async ({ x, y, verify_app }) => {
+    if (verify_app) await assertFrontmostApp(verify_app);
+    await tripleClick(x, y);
+    return { content: [{ type: "text", text: `Triple-clicked at (${x}, ${y})` }] };
   }
 );
 

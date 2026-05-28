@@ -23,6 +23,16 @@ export async function doubleClick(x: number, y: number): Promise<void> {
   `);
 }
 
+export async function tripleClick(x: number, y: number): Promise<void> {
+  await runAppleScript(`
+    tell application "System Events"
+      click at {${x}, ${y}}
+      click at {${x}, ${y}}
+      click at {${x}, ${y}}
+    end tell
+  `);
+}
+
 export async function rightClick(x: number, y: number): Promise<void> {
   await runAppleScript(`
     tell application "System Events"
