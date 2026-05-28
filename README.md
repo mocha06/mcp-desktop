@@ -1,5 +1,7 @@
 # mcp-desktop
 
+[![CI](https://github.com/mocha06/mcp-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/mocha06/mcp-desktop/actions/workflows/ci.yml)
+
 macOS desktop automation for AI agents — screenshot any screen, switch apps and tabs, click, type, and scroll. Built as two separate MCP servers so you can install only the trust level you need.
 
 ---
