@@ -141,12 +141,14 @@ async function switchToIndex(appName: string, index: number): Promise<void> {
     await runAppleScript(`
       tell application "${appName}"
         activate
-        set tabIdx to 0
+        set globalIdx to 0
         repeat with w in windows
+          set localIdx to 0
           repeat with t in tabs of w
-            set tabIdx to tabIdx + 1
-            if tabIdx = ${index} then
-              set active tab of w to t
+            set globalIdx to globalIdx + 1
+            set localIdx to localIdx + 1
+            if globalIdx = ${index} then
+              set active tab index of w to localIdx
               set index of w to 1
               return
             end if
@@ -158,12 +160,14 @@ async function switchToIndex(appName: string, index: number): Promise<void> {
     await runAppleScript(`
       tell application "Safari"
         activate
-        set tabIdx to 0
+        set globalIdx to 0
         repeat with w in windows
+          set localIdx to 0
           repeat with t in tabs of w
-            set tabIdx to tabIdx + 1
-            if tabIdx = ${index} then
-              set current tab of w to t
+            set globalIdx to globalIdx + 1
+            set localIdx to localIdx + 1
+            if globalIdx = ${index} then
+              set current tab index of w to localIdx
               set index of w to 1
               return
             end if
