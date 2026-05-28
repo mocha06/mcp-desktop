@@ -128,8 +128,8 @@ var count: UInt32 = 0
 CGGetDisplaysWithPoint(point, 1, &displayID, &count)
 let bounds = CGDisplayBounds(displayID)
 
-let pageY = Int32(bounds.height * 0.85) * Int32(${amount})
-let pageX = Int32(bounds.width * 0.85) * Int32(${amount})
+let pageY = Int32(bounds.height * 0.75) * Int32(${amount})
+let pageX = Int32(bounds.width * 0.75) * Int32(${amount})
 
 let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)!
 moveEvent.post(tap: .cghidEventTap)
