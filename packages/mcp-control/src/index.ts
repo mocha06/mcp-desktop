@@ -25,6 +25,16 @@ function assertNotBlocked(appName: string): void {
   }
 }
 
+async function assertFrontmostApp(expected: string): Promise<void> {
+  const actual = await getFrontmostApp();
+  if (!actual.toLowerCase().includes(expected.toLowerCase())) {
+    throw new Error(
+      `Safety check failed: expected '${expected}' to be frontmost but got '${actual}'. ` +
+      `Use switch_app('${expected}') first, then retry.`
+    );
+  }
+}
+
 const server = new McpServer({ name: "mcp-desktop-control", version: "0.1.0" });
 
 // ── Screenshot tools (same as mcp-desktop-screenshot) ──────────────────────
@@ -158,13 +168,15 @@ server.registerTool(
 server.registerTool(
   "click",
   {
-    description: "Left-click at the given screen coordinates.",
+    description: "Left-click at the given screen coordinates. Pass verify_app to confirm the right app is frontmost before clicking.",
     inputSchema: {
       x: z.number().int().describe("X coordinate in screen pixels"),
       y: z.number().int().describe("Y coordinate in screen pixels"),
+      verify_app: z.string().optional().describe("Expected frontmost app name. If the wrong app is active, the click is aborted with an error."),
     },
   },
-  async ({ x, y }) => {
+  async ({ x, y, verify_app }) => {
+    if (verify_app) await assertFrontmostApp(verify_app);
     await click(x, y);
     return { content: [{ type: "text", text: `Clicked at (${x}, ${y})` }] };
   }
@@ -173,13 +185,15 @@ server.registerTool(
 server.registerTool(
   "double_click",
   {
-    description: "Double-click at the given screen coordinates.",
+    description: "Double-click at the given screen coordinates. Pass verify_app to confirm the right app is frontmost before clicking.",
     inputSchema: {
       x: z.number().int().describe("X coordinate in screen pixels"),
       y: z.number().int().describe("Y coordinate in screen pixels"),
+      verify_app: z.string().optional().describe("Expected frontmost app name. Aborts with an error if the wrong app is active."),
     },
   },
-  async ({ x, y }) => {
+  async ({ x, y, verify_app }) => {
+    if (verify_app) await assertFrontmostApp(verify_app);
     await doubleClick(x, y);
     return { content: [{ type: "text", text: `Double-clicked at (${x}, ${y})` }] };
   }
@@ -188,13 +202,15 @@ server.registerTool(
 server.registerTool(
   "right_click",
   {
-    description: "Right-click (secondary click) at the given screen coordinates.",
+    description: "Right-click (secondary click) at the given screen coordinates. Pass verify_app to confirm the right app is frontmost before clicking.",
     inputSchema: {
       x: z.number().int().describe("X coordinate in screen pixels"),
       y: z.number().int().describe("Y coordinate in screen pixels"),
+      verify_app: z.string().optional().describe("Expected frontmost app name. Aborts with an error if the wrong app is active."),
     },
   },
-  async ({ x, y }) => {
+  async ({ x, y, verify_app }) => {
+    if (verify_app) await assertFrontmostApp(verify_app);
     await rightClick(x, y);
     return { content: [{ type: "text", text: `Right-clicked at (${x}, ${y})` }] };
   }
@@ -203,12 +219,14 @@ server.registerTool(
 server.registerTool(
   "type_text",
   {
-    description: "Type a string of text as keyboard input into the currently focused element.",
+    description: "Type a string of text as keyboard input into the currently focused element. Pass verify_app to confirm the right app is frontmost before typing.",
     inputSchema: {
       text: z.string().describe("Text to type"),
+      verify_app: z.string().optional().describe("Expected frontmost app name. Aborts with an error if the wrong app is active — prevents typing into the wrong window."),
     },
   },
-  async ({ text }) => {
+  async ({ text, verify_app }) => {
+    if (verify_app) await assertFrontmostApp(verify_app);
     await typeText(text);
     return { content: [{ type: "text", text: `Typed: ${text}` }] };
   }
@@ -217,12 +235,14 @@ server.registerTool(
 server.registerTool(
   "key_press",
   {
-    description: "Press a key or key combination. Examples: 'return', 'escape', 'cmd+c', 'cmd+shift+n', 'tab', 'cmd+a'.",
+    description: "Press a key or key combination. Examples: 'return', 'escape', 'cmd+c', 'cmd+shift+n', 'tab', 'cmd+a'. Pass verify_app to confirm the right app is frontmost first.",
     inputSchema: {
       combo: z.string().describe("Key or combo to press. Modifiers: cmd, shift, option/opt/alt, ctrl. Separated by +."),
+      verify_app: z.string().optional().describe("Expected frontmost app name. Aborts with an error if the wrong app is active."),
     },
   },
-  async ({ combo }) => {
+  async ({ combo, verify_app }) => {
+    if (verify_app) await assertFrontmostApp(verify_app);
     await keyPress(combo);
     return { content: [{ type: "text", text: `Pressed: ${combo}` }] };
   }
@@ -231,15 +251,17 @@ server.registerTool(
 server.registerTool(
   "scroll",
   {
-    description: "Scroll at the given screen coordinates.",
+    description: "Scroll at the given screen coordinates. Pass verify_app to confirm the right app is frontmost first.",
     inputSchema: {
       x: z.number().int().describe("X coordinate to scroll at"),
       y: z.number().int().describe("Y coordinate to scroll at"),
       direction: z.enum(["up", "down", "left", "right"]).describe("Scroll direction"),
       amount: z.number().int().min(1).default(3).describe("Number of lines to scroll"),
+      verify_app: z.string().optional().describe("Expected frontmost app name. Aborts with an error if the wrong app is active."),
     },
   },
-  async ({ x, y, direction, amount }) => {
+  async ({ x, y, direction, amount, verify_app }) => {
+    if (verify_app) await assertFrontmostApp(verify_app);
     await scroll(x, y, direction, amount);
     return { content: [{ type: "text", text: `Scrolled ${direction} ${amount} lines at (${x}, ${y})` }] };
   }
