@@ -70,14 +70,10 @@ npx @rchavarria06/mcp-desktop-control
 
 Screenshots are **ephemeral by default** — they're returned as base64 image data in the AI's context and never written to disk. Pass a `save_path` to any screenshot tool if you want to persist it.
 
-### Blocking apps
-
-Set the `BLOCKED_APPS` environment variable to a comma-separated list of app names the server will refuse to access:
+Set `BLOCKED_APPS` to a comma-separated list of app names the server will refuse to access:
 
 ```json
-"env": {
-  "BLOCKED_APPS": "1Password,Keychain Access,Signal"
-}
+"env": { "BLOCKED_APPS": "1Password,Keychain Access,Signal" }
 ```
 
 ---
@@ -86,119 +82,33 @@ Set the `BLOCKED_APPS` environment variable to a comma-separated list of app nam
 
 ### mcp-desktop-screenshot
 
-#### `list_displays`
-Lists all connected displays and their numbers.
+| Tool | Description | Parameters |
+|---|---|---|
+| `list_displays` | List connected displays | — |
+| `list_apps` | List running apps with a visible UI | — |
+| `list_tabs` | List tabs in a browser or terminal | `app_name` |
+| `take_screenshot` | Capture a display, return as image | `display` (default 1), `save_path?` |
+| `switch_app` | Bring an app to the foreground | `app_name` |
+| `switch_tab` | Switch tab by URL substring, title substring, or index | `app_name`, `tab` |
+| `screenshot_app` | Switch to app, capture, restore previous app | `app_name`, `display?`, `save_path?` |
 
-```
-→ { displays: [{ display: 1, note: "main display" }, { display: 2, note: "display 2" }] }
-```
-
-#### `list_apps`
-Lists all running applications with a visible UI.
-
-```
-→ { apps: ["Brave Browser", "Cursor", "iTerm2", ...] }
-```
-
-#### `list_tabs`
-Lists open tabs in a browser or terminal app. Returns title and URL (browsers only).
-
-Supported apps: `Brave Browser`, `Google Chrome`, `Chromium`, `Arc`, `Safari`, `iTerm2`, `Terminal`
-
-```
-app_name: "Brave Browser"
-→ { tabs: [{ index: 1, title: "GitHub", url: "https://github.com" }, ...] }
-```
-
-#### `take_screenshot`
-Captures a specific display. Returns the image inline (base64). Optionally saves to disk.
-
-```
-display: 2
-save_path: "/Users/you/Desktop/shot.png"  ← optional
-```
-
-#### `switch_app`
-Brings an application to the foreground.
-
-```
-app_name: "Brave Browser"
-```
-
-#### `switch_tab`
-Switches to a tab by URL substring, title substring, or index. Tries URL match first, then title, then index.
-
-```
-app_name: "Brave Browser"
-tab: "localhost:3000"       ← URL substring
-tab: "Pull Request #42"     ← title substring
-tab: 3                      ← index from list_tabs
-```
-
-#### `screenshot_app`
-Switches to an app, captures the display, then restores the previous app — all in one call.
-
-```
-app_name: "Brave Browser"
-display: 2
-save_path: "/Users/you/Desktop/shot.png"  ← optional
-```
-
----
+`list_tabs` supports: `Brave Browser`, `Google Chrome`, `Chromium`, `Arc`, `Safari`, `iTerm2`, `Terminal`
 
 ### mcp-desktop-control
 
-Includes all tools from `mcp-desktop-screenshot`, plus:
+Includes all tools above, plus:
 
-#### `click`
-Left-clicks at the given screen coordinates.
+| Tool | Description | Parameters |
+|---|---|---|
+| `click` | Left-click at coordinates | `x`, `y`, `verify_app?` |
+| `double_click` | Double-click at coordinates | `x`, `y`, `verify_app?` |
+| `triple_click` | Triple-click — selects all text in an input (mouse-native) | `x`, `y`, `verify_app?` |
+| `right_click` | Right-click at coordinates | `x`, `y`, `verify_app?` |
+| `type_text` | Type text into the focused element | `text`, `verify_app?` |
+| `key_press` | Press a key or combo (`cmd+c`, `shift+tab`, `escape`, …) | `combo`, `verify_app?` |
+| `scroll` | Scroll at coordinates | `x`, `y`, `direction` (up/down/left/right), `amount?`, `verify_app?` |
 
-```
-x: 500, y: 300
-```
-
-#### `double_click`
-Double-clicks at the given screen coordinates.
-
-```
-x: 500, y: 300
-```
-
-#### `right_click`
-Right-clicks (secondary click) at the given screen coordinates.
-
-```
-x: 500, y: 300
-```
-
-#### `type_text`
-Types a string into the currently focused element.
-
-```
-text: "Hello, world!"
-```
-
-#### `key_press`
-Presses a key or key combination.
-
-```
-combo: "return"
-combo: "escape"
-combo: "cmd+c"
-combo: "cmd+shift+n"
-combo: "cmd+a"
-```
-
-Supported modifiers: `cmd`, `shift`, `option` / `opt` / `alt`, `ctrl`
-
-#### `scroll`
-Scrolls at the given screen coordinates.
-
-```
-x: 760, y: 400
-direction: "down"   ← up | down | left | right
-amount: 3           ← number of lines
-```
+Pass `verify_app` to any control tool to abort with an error if the wrong app is frontmost — prevents accidental input to the wrong window.
 
 ---
 
@@ -207,23 +117,23 @@ amount: 3           ← number of lines
 ### AI attaches screenshots to a PR description
 
 ```
-1. list_displays           → find which display has the terminal
-2. screenshot_app("Terminal", display: 3)  → capture test output
-3. switch_tab("Brave Browser", "localhost:3000")  → focus preview
-4. take_screenshot(display: 2)  → capture the UI
+1. list_displays                                    → find which display has the terminal
+2. screenshot_app("Terminal", display: 3)           → capture test output
+3. switch_tab("Brave Browser", "localhost:3000")    → focus preview
+4. take_screenshot(display: 2)                      → capture the UI
 5. AI writes PR description with both images embedded
 ```
 
 ### AI fills out a form
 
 ```
-1. screenshot_app("Brave Browser")  → see current state
-2. click(x, y)                      → focus the input
-3. type_text("roberto@example.com") → fill it in
-4. key_press("tab")                 → next field
+1. screenshot_app("Brave Browser")      → see current state
+2. click(x, y)                          → focus the input
+3. type_text("roberto@example.com")     → fill it in
+4. key_press("tab")                     → next field
 5. type_text("My message here")
-6. key_press("return")              → submit
-7. take_screenshot(display: 1)      → confirm success
+6. key_press("return")                  → submit
+7. take_screenshot(display: 1)          → confirm success
 ```
 
 ---
@@ -235,7 +145,7 @@ Both servers are built on macOS-native primitives — no third-party automation 
 - **Screenshots**: `screencapture` CLI
 - **App switching / tab control**: `osascript` (AppleScript)
 - **Mouse / keyboard**: `System Events` via AppleScript
-- **Scroll**: Python + `Quartz.CGEvent` (macOS built-in)
+- **Scroll**: Swift + `CoreGraphics.CGEvent`
 
 ---
 
